@@ -1,0 +1,16 @@
+{
+  "name": "family-grocery-list-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android package for Family Grocery List",
+  "scripts": {
+    "build:android": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0"
+  }
+}

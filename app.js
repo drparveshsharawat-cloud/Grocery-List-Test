@@ -315,7 +315,15 @@ $('resendVerification').onclick = async () => {
     message('authStatus','A fresh verification email has been sent. Open the newest email and use its link.');
   } catch(e) { message('authStatus', friendly(e), true); }
 };
-$('signOut').onclick = () => signOut(auth);
+$('signOut').onclick = async () => {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      const nativeAuth = await import('./native-auth.bundle.js');
+      await nativeAuth.signOutGoogleNative();
+    }
+    await signOut(auth);
+  } catch(e) { message('authStatus', friendly(e), true); }
+};
 $('createFamily').onclick = async () => { try { await createFamily($('newFamilyName').value); } catch(e) { message('familyStatus', friendly(e), true); } };
 $('joinInvite').onclick = async () => {
   try {

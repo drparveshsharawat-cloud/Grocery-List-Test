@@ -240,7 +240,7 @@ async function createInvite(email) {
     email:invitedEmail, familyName:family.name, status:'pending', createdBy:user.uid,
     createdAt:Date.now(), expiresAt:new Date(Date.now() + 7*24*60*60*1000)
   });
-  const url = new URL(location.href); url.search = ''; url.hash = ''; url.searchParams.set('invite', token); url.searchParams.set('family', familyId);
+  const url = new URL('https://drparveshsharawat-cloud.github.io/Grocery-List-Test/'); url.searchParams.set('invite', token); url.searchParams.set('family', familyId);
   await navigator.clipboard.writeText(url.toString());
   return url.toString();
 }

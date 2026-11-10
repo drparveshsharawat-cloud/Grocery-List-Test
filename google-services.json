@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "530437162373-s2m96lbvvjt1o6ruikrmck07als0k3ju.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ca.pksmn.familygrocerylist",
+            "certificate_hash": "eae54c8a37e1db6e49d8e5f4d8674bb6586ba20e"
+          }
+        },
+        {
           "client_id": "530437162373-hqcb6r0srirto5ndg0dr9rtnnseqt5r9.apps.googleusercontent.com",
           "client_type": 3
         }

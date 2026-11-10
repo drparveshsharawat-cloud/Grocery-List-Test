@@ -48,15 +48,12 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
-      - name: Configure Firebase and stable debug signing
+      - name: Configure Firebase
         run: |
-          mkdir -p "$HOME/.android"
-          cp android-debug.keystore "$HOME/.android/debug.keystore"
           cp google-services.json android/app/google-services.json
           sed -i "/dependencies {/a\\        classpath 'com.google.gms:google-services:4.4.2'" android/build.gradle
           echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
           printf "\\next {\\n    rgcfaIncludeGoogle = true\\n    androidxCredentialsVersion = '1.3.0'\\n}\\n" >> android/variables.gradle
-          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep -E 'SHA1:|SHA256:'
 
       - name: Generate Android launcher icons
         run: |

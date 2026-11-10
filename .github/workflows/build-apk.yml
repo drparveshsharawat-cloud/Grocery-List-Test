@@ -68,6 +68,39 @@ jobs:
       - name: Sync web app into Android project
         run: npx cap sync android
 
+      - name: Add detailed Credential Manager error diagnostics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/node_modules/@capacitor-firebase/authentication/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/authentication/handlers/GoogleAuthProviderHandler.java")
+          if not path.exists():
+              path = Path("node_modules/@capacitor-firebase/authentication/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/authentication/handlers/GoogleAuthProviderHandler.java")
+          source = path.read_text()
+          old = """    private void handleGetCredentialError(final PluginCall call, final boolean isLink, final GetCredentialException exception) {
+                  if (isLink) {
+                      pluginImplementation.handleFailedLink(call, null, exception);
+                  } else {
+                      pluginImplementation.handleFailedSignIn(call, null, exception);
+                  }
+              }"""
+          new = """    private void handleGetCredentialError(final PluginCall call, final boolean isLink, final GetCredentialException exception) {
+                  String diagnostic = "Credential Manager exception=" + exception.getClass().getName()
+                      + "; message=" + exception.getMessage();
+                  Throwable cause = exception.getCause();
+                  if (cause != null) {
+                      diagnostic += "; cause=" + cause.getClass().getName() + ": " + cause.getMessage();
+                  }
+                  if (isLink) {
+                      pluginImplementation.handleFailedLink(call, diagnostic, exception);
+                  } else {
+                      pluginImplementation.handleFailedSignIn(call, diagnostic, exception);
+                  }
+              }"""
+          if old not in source:
+              raise SystemExit("Could not locate expected Credential Manager error handler; stopping build.")
+          path.write_text(source.replace(old, new, 1))
+          print(f"Patched native diagnostic handler: {path}")
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug

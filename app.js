@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword,
+  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {
@@ -260,7 +260,7 @@ async function migrateLegacyList() {
   await batch.commit();
   message('appStatus', oldItems.length + ' existing items copied. The original list was not deleted.');
 }
-$('googleSignIn').onclick = async () => { try { await signInWithPopup(auth, googleProvider); } catch(e) { message('authStatus', friendly(e), true); } };
+$('googleSignIn').onclick = async () => { try { await signInWithRedirect(auth, googleProvider); } catch(e) { message('authStatus', friendly(e), true); } };
 $('register').onclick = async () => {
   try {
     const credential = await createUserWithEmailAndPassword(auth, cleanEmail($('email').value), $('password').value);
@@ -311,6 +311,8 @@ $('createInvite').onclick = async () => {
 };
 $('copyInvite').onclick = async () => { try { await navigator.clipboard.writeText($('inviteLink').value); message('inviteStatus','Link copied.'); } catch(e) { message('inviteStatus','Copy the link from the field above.'); } };
 $('importLegacy').onclick = async () => { try { await migrateLegacyList(); } catch(e) { message('appStatus',friendly(e),true); } };
+
+try { await getRedirectResult(auth); } catch (e) { message('authStatus', friendly(e), true); }
 
 await handleInviteLanding();
 onAuthStateChanged(auth, async nextUser => {

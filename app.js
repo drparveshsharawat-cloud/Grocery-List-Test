@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword,
+  getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {
@@ -20,6 +20,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Read-only connection to the original grocery-list project, used only for the owner's store-name transfer.
+const legacyConfig = {
+  apiKey: "AIzaSyD5HrofJvPdHH_69JUpI43xJEJeh93iOpo",
+  authDomain: "grocery-list-pksmn.firebaseapp.com",
+  projectId: "grocery-list-pksmn",
+  storageBucket: "grocery-list-pksmn.firebasestorage.app",
+  messagingSenderId: "754537311698",
+  appId: "1:754537311698:web:a2db5c77e97cb97910ac0b"
+};
+const legacyApp = initializeApp(legacyConfig, 'legacyStoreSource');
+const legacyAuth = getAuth(legacyApp);
+const legacyDb = () => getFirestore(legacyApp);
+const legacyProvider = new GoogleAuthProvider();
+legacyProvider.setCustomParameters({prompt: 'select_account'});
 const googleProvider = new GoogleAuthProvider();
 const DEFAULT_STORES = ['No Frills', 'Costco', 'Walmart', 'Farm Boy', 'Other'];
 const $ = id => document.getElementById(id);
@@ -85,7 +100,13 @@ function refreshStoreList() {
   }
 }
 
+function updateLegacyImportVisibility() {
+  const button = $('importLegacyStores');
+  if (button) button.classList.toggle('hidden',
+    cleanEmail(user?.email) !== 'dr.parvesh.sharawat@gmail.com' || family?.ownerUid !== user?.uid);
+}
 function renderStores() {
+  updateLegacyImportVisibility();
   const select = $('storeSelect'), selected = select.value;
   select.replaceChildren();
   stores.forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; select.append(opt); });
@@ -158,6 +179,7 @@ function renderMembers() {
   const inv = $('inviteList'); inv.replaceChildren();
   invites.filter(x => x.status === 'pending').forEach(x => { const row = document.createElement('p'); row.className='member-row'; row.textContent = x.email + ' · Invitation pending'; inv.append(row); });
   const isOwner = family?.ownerUid === user?.uid;
+  updateLegacyImportVisibility();
   $('invitePanel').classList.toggle('hidden', !isOwner);
   $('inviteUnavailable').classList.toggle('hidden', isOwner);
 }
@@ -319,6 +341,35 @@ $('addItem').onsubmit = async e => {
     $('newItem').value = ''; $('newItem').focus();
   } catch(e) { message('appStatus', friendly(e), true); }
   finally { busy = false; }
+};
+$('importLegacyStores').onclick = async () => {
+  if (cleanEmail(user?.email) !== 'dr.parvesh.sharawat@gmail.com' || family?.ownerUid !== user?.uid) {
+    message('legacyImportStatus', 'This transfer is available only to the original account that owns this family.', true);
+    return;
+  }
+  const button = $('importLegacyStores');
+  button.disabled = true;
+  message('legacyImportStatus', 'Sign in to the original grocery app with your Google account…');
+  try {
+    const credential = await signInWithPopup(legacyAuth, legacyProvider);
+    if (cleanEmail(credential.user.email) !== 'dr.parvesh.sharawat@gmail.com') {
+      throw new Error('Please choose the original Google account: dr.parvesh.sharawat@gmail.com.');
+    }
+    const source = await getDoc(doc(legacyDb(), 'items', 'store_settings'));
+    if (!source.exists() || !Array.isArray(source.data().stores)) {
+      throw new Error('The original app did not return its saved store list. No changes were made.');
+    }
+    const oldNames = source.data().stores.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim());
+    if (!oldNames.length) throw new Error('No saved custom store names were found in the original app.');
+    const merged = [...new Set([...oldNames, ...savedStores, ...DEFAULT_STORES])];
+    await setDoc(settingsRef(), {stores: merged, updatedAt: Date.now()});
+    message('legacyImportStatus', 'Imported ' + oldNames.length + ' original store names into your family settings. Your grocery items were not changed.');
+  } catch (e) {
+    message('legacyImportStatus', friendly(e), true);
+  } finally {
+    await signOut(legacyAuth).catch(() => {});
+    button.disabled = false;
+  }
 };
 $('addStore').onsubmit = async e => {
   e.preventDefault(); const name = $('newStore').value.trim();

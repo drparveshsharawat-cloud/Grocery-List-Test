@@ -156,7 +156,23 @@ function renderMembers() {
   const el = $('memberList'); el.replaceChildren();
   members.forEach(m => { const row = document.createElement('p'); row.className = 'member-row'; row.textContent = (m.email || m.uid) + (m.role === 'owner' ? ' · Owner' : ''); el.append(row); });
   const inv = $('inviteList'); inv.replaceChildren();
-  invites.filter(x => x.status === 'pending').forEach(x => { const row = document.createElement('p'); row.className='member-row'; row.textContent = x.email + ' · Invitation pending'; inv.append(row); });
+  invites.filter(x => x.status === 'pending').forEach(x => {
+    const row = document.createElement('div'); row.className='member-row';
+    const label = document.createElement('span'); label.style.flex='1'; label.textContent = x.email + ' · Pending';
+    const cancel = document.createElement('button'); cancel.className='secondary danger'; cancel.type='button'; cancel.textContent='Cancel';
+    cancel.onclick = async () => {
+      if (!confirm('Cancel the pending invitation for ' + x.email + '? They will no longer be able to use that link.')) return;
+      cancel.disabled = true;
+      try {
+        await deleteDoc(doc(db, ...familyPath('invites', x.id)));
+        message('inviteStatus', 'Invitation for ' + x.email + ' cancelled.');
+      } catch (e) {
+        cancel.disabled = false;
+        message('inviteStatus', friendly(e), true);
+      }
+    };
+    row.append(label, cancel); inv.append(row);
+  });
   const isOwner = family?.ownerUid === user?.uid;
   $('invitePanel').classList.toggle('hidden', !isOwner);
   $('inviteUnavailable').classList.toggle('hidden', isOwner);

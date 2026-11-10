@@ -109,7 +109,7 @@ jobs:
           test -n "$ANDROID_KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS repository secret" && exit 1)
           test -n "$ANDROID_KEY_PASSWORD" || (echo "Missing ANDROID_KEY_PASSWORD repository secret" && exit 1)
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/family-grocery-list-release.jks"
-          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/family-grocery-list-release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/family-grocery-list-release.jks" >> "$GITHUB_ENV"
           python3 - <<'PY'
           from pathlib import Path
           path = Path("android/app/build.gradle")
@@ -127,12 +127,17 @@ jobs:
           if "signingConfigs {" not in source:
               source = source.replace("android {", "android {\n" + signing, 1)
           if "signingConfig signingConfigs.release" not in source:
-              source = source.replace("buildTypes {", "buildTypes {\\n        debug {\\n            signingConfig signingConfigs.release\\n        }", 1)
+              source = source.replace("buildTypes {", "buildTypes {\n        debug {\n            signingConfig signingConfigs.release\n        }\n", 1)
           path.write_text(source)
           PY
           keytool -list -v -keystore "$ANDROID_KEYSTORE_FILE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E 'SHA1:|SHA256:'
 
       - name: Build debug APK
+        env:
+          ANDROID_KEYSTORE_FILE: \${{ runner.temp }}/family-grocery-list-release.jks
+          ANDROID_KEYSTORE_PASSWORD: \${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: \${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: \${{ secrets.ANDROID_KEY_PASSWORD }}
         working-directory: android
         run: ./gradlew assembleDebug
 

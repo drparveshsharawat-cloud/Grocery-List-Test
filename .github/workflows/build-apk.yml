@@ -45,6 +45,12 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Generate Android launcher icons
+        run: |
+          mkdir -p assets
+          cp icon-512.png assets/icon-only.png
+          npx capacitor-assets generate --android
+
       - name: Sync web app into Android project
         run: npx cap sync android
 

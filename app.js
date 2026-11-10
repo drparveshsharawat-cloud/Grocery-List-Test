@@ -24,8 +24,8 @@ const googleProvider = new GoogleAuthProvider();
 const DEFAULT_STORES = ['No Frills', 'Costco', 'Walmart', 'Farm Boy', 'Other'];
 const $ = id => document.getElementById(id);
 let user = null, familyId = null, family = null, stores = [...DEFAULT_STORES], items = [];
-let stopItems = null, stopFamily = null, stopMembers = null, stopInvites = null;
-let members = [], invites = [], busy = false;
+let stopItems = null, stopFamily = null, stopMembers = null, stopInvites = null, stopSettings = null;
+let members = [], invites = [], busy = false, savedStores = [...DEFAULT_STORES];
 
 function message(target, text, error = false) {
   const el = $(target); if (!el) return;
@@ -64,14 +64,26 @@ document.querySelectorAll('#pageNav [data-page]').forEach(button => {
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 function stopFamilyListeners() {
-  [stopItems, stopFamily, stopMembers, stopInvites].forEach(fn => { if (fn) fn(); });
-  stopItems = stopFamily = stopMembers = stopInvites = null;
+  [stopItems, stopFamily, stopMembers, stopInvites, stopSettings].forEach(fn => { if (fn) fn(); });
+  stopItems = stopFamily = stopMembers = stopInvites = stopSettings = null;
 }
 function familyPath(...parts) { return ['families', familyId, ...parts]; }
 function familyRef() { return doc(db, ...familyPath()); }
 function memberRef(uid = user.uid) { return doc(db, ...familyPath('members', uid)); }
 function itemsRef() { return collection(db, ...familyPath('items')); }
 function settingsRef() { return doc(db, ...familyPath('settings', 'stores')); }
+
+function refreshStoreList() {
+  const itemStores = [...new Set(items.map(x => typeof x.store === 'string' ? x.store.trim() : '').filter(Boolean))];
+  const nextStores = [...new Set([...savedStores, ...DEFAULT_STORES, ...itemStores])];
+  const changed = JSON.stringify(nextStores) !== JSON.stringify(savedStores);
+  stores = nextStores;
+  if (changed) {
+    savedStores = [...nextStores];
+    setDoc(settingsRef(), {stores: nextStores, updatedAt: Date.now()})
+      .catch(e => message('appStatus', friendly(e), true));
+  }
+}
 
 function renderStores() {
   const select = $('storeSelect'), selected = select.value;
@@ -169,8 +181,15 @@ function listenToFamily() {
     }
     renderMembers();
   }, e => message('appStatus', friendly(e), true));
+  stopSettings = onSnapshot(settingsRef(), snap => {
+    const data = snap.exists() ? snap.data() : {};
+    savedStores = Array.isArray(data.stores) ? data.stores.filter(x => typeof x === 'string' && x.trim()) : [...DEFAULT_STORES];
+    refreshStoreList();
+    renderItems();
+  }, e => message('appStatus', friendly(e), true));
   stopItems = onSnapshot(query(itemsRef()), snap => {
     items = snap.docs.map(d => ({id:d.id,...d.data()})).filter(x => typeof x.text === 'string');
+    refreshStoreList();
     renderItems(); message('appStatus', 'Synced · this family’s list is private.');
   }, e => message('appStatus', friendly(e), true));
   stopMembers = onSnapshot(collection(db, ...familyPath('members')), snap => { members = snap.docs.map(d=>({uid:d.id,...d.data()})); renderMembers(); });

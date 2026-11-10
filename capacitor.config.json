@@ -2,5 +2,13 @@
   "appId": "ca.pksmn.familygrocerylist",
   "appName": "Family Grocery List",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": [
+        "google.com"
+      ]
+    }
+  }
 }

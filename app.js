@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword,
+  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithCredential, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {
@@ -281,7 +281,20 @@ async function handleInviteLanding() {
     history.replaceState({}, '', location.pathname);
   }
 }
-$('googleSignIn').onclick = async () => { try { await signInWithRedirect(auth, googleProvider); } catch(e) { message('authStatus', friendly(e), true); } };
+$('googleSignIn').onclick = async () => {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      const nativeAuth = await import('./native-auth.bundle.js');
+      const result = await nativeAuth.signInWithGoogleNative();
+      const idToken = result && result.credential && result.credential.idToken;
+      const accessToken = result && result.credential && result.credential.accessToken;
+      if (!idToken && !accessToken) throw new Error('Google sign-in did not return a credential. Please try again.');
+      await signInWithCredential(auth, GoogleAuthProvider.credential(idToken, accessToken));
+    } else {
+      await signInWithRedirect(auth, googleProvider);
+    }
+  } catch(e) { message('authStatus', friendly(e), true); }
+};
 $('register').onclick = async () => {
   try {
     const credential = await createUserWithEmailAndPassword(auth, cleanEmail($('email').value), $('password').value);

@@ -9,6 +9,9 @@ on:
       - "manifest.json"
       - "package.json"
       - "capacitor.config.json"
+      - "native-auth.js"
+      - "google-services.json"
+      - "android-debug.keystore"
       - ".github/workflows/build-apk.yml"
 
 permissions:
@@ -39,11 +42,22 @@ jobs:
         run: |
           mkdir -p www
           cp index.html app.js manifest.json www/
+          npx esbuild native-auth.js --bundle --format=esm --outfile=www/native-auth.bundle.js
           if [ -f icon-192.png ]; then cp icon-192.png www/; fi
           if [ -f icon-512.png ]; then cp icon-512.png www/; fi
 
       - name: Add Android platform
         run: npx cap add android
+
+      - name: Configure Firebase and stable debug signing
+        run: |
+          mkdir -p "$HOME/.android"
+          cp android-debug.keystore "$HOME/.android/debug.keystore"
+          cp google-services.json android/app/google-services.json
+          sed -i "/dependencies {/a\\        classpath 'com.google.gms:google-services:4.4.2'" android/build.gradle
+          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+          printf "\\next {\\n    rgcfaIncludeGoogle = true\\n    androidxCredentialsVersion = '1.3.0'\\n}\\n" >> android/variables.gradle
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep -E 'SHA1:|SHA256:'
 
       - name: Generate Android launcher icons
         run: |

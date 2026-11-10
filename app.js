@@ -246,20 +246,31 @@ async function createInvite(email) {
 }
 async function redeemInvite(token) {
   requireVerifiedUser();
-  const inviteRef = doc(db, 'families', familyIdFromInvite(token), 'invites', token);
-  const inviteSnap = await getDoc(inviteRef);
+  const fid = familyIdFromInvite(token);
+  const inviteRef = doc(db, 'families', fid, 'invites', token);
+  let inviteSnap;
+  try {
+    inviteSnap = await getDoc(inviteRef);
+  } catch (e) {
+    if (e?.code === 'permission-denied') throw new Error('Diagnostic: Firestore blocked reading the invitation. The signed-in account or the published invite-read rule is not being accepted.');
+    throw e;
+  }
   if (!inviteSnap.exists()) throw new Error('This invitation is invalid or has expired.');
   const data = inviteSnap.data();
   if (data.status !== 'pending' || cleanEmail(data.email) !== cleanEmail(user.email) || data.expiresAt.toMillis() < Date.now()) {
     throw new Error('This invitation is not valid for the signed-in email address, or it has expired.');
   }
-  const fid = familyIdFromInvite(token);
   const familyName = data.familyName || 'Family';
   const batch = writeBatch(db);
   batch.set(doc(db,'families',fid,'members',user.uid), {uid:user.uid,email:cleanEmail(user.email),role:'member',joinedAt:Date.now(),inviteToken:token});
   batch.set(doc(db,'users',user.uid,'families',fid), {familyId:fid,familyName,role:'member',joinedAt:Date.now()});
   batch.update(inviteRef, {status:'accepted',acceptedBy:user.uid,acceptedAt:Date.now()});
-  await batch.commit();
+  try {
+    await batch.commit();
+  } catch (e) {
+    if (e?.code === 'permission-denied') throw new Error('Diagnostic: The invitation was read successfully, but Firestore blocked the Join Family batch. This points to a membership, invite-update, or user-family rule.');
+    throw e;
+  }
   familyId = fid; family = {id:fid,name:familyName}; listenToFamily();
   localStorage.removeItem('pendingFamilyInvite'); localStorage.removeItem('pendingFamilyInviteMeta');
 }

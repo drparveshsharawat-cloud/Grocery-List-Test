@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithCredential, createUserWithEmailAndPassword,
+  getAuth, GoogleAuthProvider, signInWithPopup, getRedirectResult, signInWithCredential, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {
@@ -291,7 +291,7 @@ $('googleSignIn').onclick = async () => {
       if (!idToken && !accessToken) throw new Error('Google sign-in did not return a credential. Please try again.');
       await signInWithCredential(auth, GoogleAuthProvider.credential(idToken, accessToken));
     } else {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
     }
   } catch(e) { message('authStatus', friendly(e), true); }
 };

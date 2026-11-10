@@ -1,17 +1,13 @@
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
 export async function signInWithGoogleNative() {
   try {
-    // The Android plugin starts Credential Manager state clearing asynchronously
-    // and may resolve signOut() before its callback completes. Allow it to settle.
-    await FirebaseAuthentication.signOut();
-    await wait(1500);
-
-    // Use the plugin's default Android Google sign-in flow (Credential Manager).
+    // Bypass Android Credential Manager because its cached-account
+    // re-authentication path is returning "[16] Account reauth failed".
+    // The plugin's legacy Google sign-in path remains supported.
     return await FirebaseAuthentication.signInWithGoogle({
       skipNativeAuth: true,
+      useCredentialManager: false,
     });
   } catch (error) {
     // Preserve the native error code and full message for troubleshooting.

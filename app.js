@@ -272,6 +272,15 @@ $('emailSignIn').onclick = async () => {
   try { await signInWithEmailAndPassword(auth, cleanEmail($('email').value), $('password').value); }
   catch(e) { message('authStatus', friendly(e), true); }
 };
+$('resendVerification').onclick = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Please sign in with the email address and password you used to create the account first.');
+    if (user.emailVerified) { message('authStatus','This email address is already verified. Please sign in.'); return; }
+    await sendEmailVerification(user);
+    message('authStatus','A fresh verification email has been sent. Open the newest email and use its link.');
+  } catch(e) { message('authStatus', friendly(e), true); }
+};
 $('signOut').onclick = () => signOut(auth);
 $('createFamily').onclick = async () => { try { await createFamily($('newFamilyName').value); } catch(e) { message('familyStatus', friendly(e), true); } };
 $('joinInvite').onclick = async () => {

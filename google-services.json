@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "530437162373-khqn23h8ne17bcsi7ukmcoeutrq3gn53.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ca.pksmn.familygrocerylist",
+            "certificate_hash": "4d995ba054517536fde17aa1f5d54a64e967ed78"
+          }
+        },
+        {
           "client_id": "530437162373-hqcb6r0srirto5ndg0dr9rtnnseqt5r9.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -58,8 +58,8 @@ jobs:
       - name: Generate Android launcher icons
         run: |
           mkdir -p assets
-          cp icon-512.png assets/icon-only.png
-          npx capacitor-assets generate --android
+          cp icon-512.png assets/logo.png
+          npx capacitor-assets generate --android --iconBackgroundColor '#f1f5f0' --iconBackgroundColorDark '#f1f5f0'
 
       - name: Sync web app into Android project
         run: npx cap sync android

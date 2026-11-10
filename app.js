@@ -164,6 +164,8 @@ function renderMembers() {
 function listenToFamily() {
   stopFamilyListeners();
   if (!familyId) return;
+  // Remember the last family the user successfully opened.
+  localStorage.setItem('preferredFamilyId', familyId);
   stopFamily = onSnapshot(familyRef(), snap => {
     family = snap.exists() ? {id:snap.id,...snap.data()} : null;
     $('familyName').textContent = family?.name || 'Family';
@@ -204,6 +206,10 @@ async function chooseFamily() {
     return snap.exists() ? {id:d.id,...snap.data()} : null;
   }));
   const valid = records.filter(Boolean);
+  // Reopen the last family selected by this signed-in user, as long as membership still exists.
+  const preferredId = localStorage.getItem('preferredFamilyId');
+  const preferred = valid.find(f => f.id === preferredId);
+  if (preferred) { familyId = preferred.id; family = preferred; listenToFamily(); return; }
   if (valid.length === 1) { familyId = valid[0].id; family = valid[0]; listenToFamily(); return; }
   if (valid.length > 1) {
     const choice = prompt('Enter the number of the family to open:\n' + valid.map((f,i)=>(i+1)+'. '+f.name).join('\n'));

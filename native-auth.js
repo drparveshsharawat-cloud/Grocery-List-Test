@@ -1,9 +1,13 @@
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 export async function signInWithGoogleNative() {
   try {
-    // Clear any stale native Google session before starting a fresh account selection.
+    // The Android plugin starts Credential Manager state clearing asynchronously
+    // and may resolve signOut() before its callback completes. Allow it to settle.
     await FirebaseAuthentication.signOut();
+    await wait(1500);
 
     // Use the plugin's default Android Google sign-in flow (Credential Manager).
     return await FirebaseAuthentication.signInWithGoogle({

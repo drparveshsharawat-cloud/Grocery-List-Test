@@ -5,14 +5,12 @@ export async function signInWithGoogleNative() {
     // Clear any stale native Google session before starting a fresh account selection.
     await FirebaseAuthentication.signOut();
 
-    // Use the legacy Android Google sign-in flow for this diagnostic test.
+    // Use the plugin's default Android Google sign-in flow (Credential Manager).
     return await FirebaseAuthentication.signInWithGoogle({
       skipNativeAuth: true,
-      useCredentialManager: false,
     });
   } catch (error) {
-    // Preserve the native error code and full message so the app can display
-    // the actual failure instead of a truncated or unhelpful status.
+    // Preserve the native error code and full message for troubleshooting.
     let details = '';
     try {
       details = JSON.stringify(error, Object.getOwnPropertyNames(error));

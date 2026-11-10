@@ -1,0 +1,6 @@
+{
+  "appId": "ca.pksmn.familygrocerylist",
+  "appName": "Family Grocery List",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

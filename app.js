@@ -1,4 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import { getAuth as getLegacyAuth, GoogleAuthProvider as LegacyGoogleAuthProvider, signInWithPopup as legacySignInWithPopup, signOut as legacySignOut } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getFirestore as getLegacyFirestore, collection as legacyCollection, getDocs as legacyGetDocs } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 import {
   getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut
@@ -18,6 +20,17 @@ const firebaseConfig = {
   appId: "1:530437162373:web:00b19182ec6075a8c9f0ec"
 };
 const app = initializeApp(firebaseConfig);
+const legacyApp = initializeApp({
+  apiKey: "AIzaSyD5HrofJvPdHH_69JUpI43xJEJeh93iOpo",
+  authDomain: "grocery-list-pksmn.firebaseapp.com",
+  projectId: "grocery-list-pksmn",
+  storageBucket: "grocery-list-pksmn.firebasestorage.app",
+  messagingSenderId: "754537311698",
+  appId: "1:754537311698:web:a2db5c77e97cb97910ac0b"
+}, 'legacy-source');
+const legacyAuth = getLegacyAuth(legacyApp);
+const legacyDb = getLegacyFirestore(legacyApp);
+const legacyProvider = new LegacyGoogleAuthProvider();
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
@@ -262,19 +275,54 @@ async function handleInviteLanding() {
     history.replaceState({}, '', location.pathname);
   }
 }
-async function migrateLegacyList() {
+async function importLegacyList() {
   requireVerifiedUser();
   if (family?.ownerUid !== user.uid) throw new Error('Only the family owner can import the old shared list.');
-  if (!confirm('Copy the existing shared list into this family? The original items will remain unchanged.')) return;
-  const legacy = await getDocs(collection(db,'items'));
-  const oldItems = legacy.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.id !== 'store_settings' && typeof x.text === 'string');
-  const batch = writeBatch(db);
-  oldItems.forEach(x => {
-    const ref = doc(itemsRef());
-    batch.set(ref, {text:x.text,store:stores.includes(x.store)?x.store:'Other',done:!!x.done,doneAt:x.doneAt||0,createdAt:x.createdAt||Date.now(),createdBy:user.uid,importedFromLegacy:true});
-  });
-  await batch.commit();
-  message('appStatus', oldItems.length + ' existing items copied. The original list was not deleted.');
+  const button = $('importLegacy');
+  button.disabled = true;
+  message('importStatus', 'Opening Google sign-in for your original list…');
+  let sourceUser = null;
+  try {
+    const credential = await legacySignInWithPopup(legacyAuth, legacyProvider);
+    sourceUser = credential.user;
+    if (!sourceUser.emailVerified) throw new Error('The Google account must have a verified email address.');
+    message('importStatus', 'Checking access to the original grocery list…');
+    const oldSnapshot = await legacyGetDocs(legacyCollection(legacyDb, 'items'));
+    const oldItems = oldSnapshot.docs
+      .map(d => ({id:d.id, ...d.data()}))
+      .filter(x => x.id !== 'store_settings' && typeof x.text === 'string' && x.text.trim());
+    if (!oldItems.length) {
+      message('importStatus', 'No grocery items were found in the original list. Your original list was not changed.');
+      return;
+    }
+    message('importStatus', 'Copying ' + oldItems.length + ' items, including checked items…');
+    for (let offset = 0; offset < oldItems.length; offset += 400) {
+      const batch = writeBatch(db);
+      oldItems.slice(offset, offset + 400).forEach(x => {
+        const target = doc(db, ...familyPath('items', 'legacy_' + x.id));
+        batch.set(target, {
+          text: x.text,
+          store: stores.includes(x.store) ? x.store : 'Other',
+          done: !!x.done,
+          doneAt: Number(x.doneAt || 0),
+          createdAt: Number(x.createdAt || Date.now()),
+          createdBy: user.uid,
+          importedFromLegacy: true,
+          originalItemId: x.id,
+          importedAt: Date.now()
+        });
+      });
+      await batch.commit();
+    }
+    message('importStatus', 'Successfully imported ' + oldItems.length + ' items, including checked items. Your original list remains unchanged.');
+  } catch (e) {
+    message('importStatus', friendly(e), true);
+  } finally {
+    if (sourceUser) {
+      try { await legacySignOut(legacyAuth); } catch (_) {}
+    }
+    button.disabled = false;
+  }
 }
 $('googleSignIn').onclick = async () => { try { await signInWithRedirect(auth, googleProvider); } catch(e) { message('authStatus', friendly(e), true); } };
 $('register').onclick = async () => {
@@ -335,7 +383,7 @@ $('createInvite').onclick = async () => {
   } catch(e) { message('inviteStatus',friendly(e),true); }
 };
 $('copyInvite').onclick = async () => { try { await navigator.clipboard.writeText($('inviteLink').value); message('inviteStatus','Link copied.'); } catch(e) { message('inviteStatus','Copy the link from the field above.'); } };
-$('importLegacy').onclick = async () => { try { await migrateLegacyList(); } catch(e) { message('appStatus',friendly(e),true); } };
+$('importLegacy').onclick = importLegacyList;
 
 try { await getRedirectResult(auth); } catch (e) { message('authStatus', friendly(e), true); }
 

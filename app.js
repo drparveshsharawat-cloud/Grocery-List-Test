@@ -47,6 +47,20 @@ function friendly(error) {
   if (code === 'failed-precondition') return 'The operation could not be completed. Please refresh and try again.';
   return error?.message || 'Something went wrong. Please try again.';
 }
+function showPage(page) {
+  ['family','invites','list','stores'].forEach(name => {
+    const section = $('page-' + name);
+    if (section) section.classList.toggle('active', name === page);
+    const button = document.querySelector('#pageNav [data-page="' + name + '"]');
+    if (button) {
+      button.classList.toggle('active', name === page);
+      button.setAttribute('aria-current', name === page ? 'page' : 'false');
+    }
+  });
+}
+document.querySelectorAll('#pageNav [data-page]').forEach(button => {
+  button.addEventListener('click', () => showPage(button.dataset.page));
+});
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 function stopFamilyListeners() {
@@ -131,7 +145,9 @@ function renderMembers() {
   members.forEach(m => { const row = document.createElement('p'); row.className = 'member-row'; row.textContent = (m.email || m.uid) + (m.role === 'owner' ? ' · Owner' : ''); el.append(row); });
   const inv = $('inviteList'); inv.replaceChildren();
   invites.filter(x => x.status === 'pending').forEach(x => { const row = document.createElement('p'); row.className='member-row'; row.textContent = x.email + ' · Invitation pending'; inv.append(row); });
-  $('invitePanel').classList.toggle('hidden', family?.ownerUid !== user?.uid);
+  const isOwner = family?.ownerUid === user?.uid;
+  $('invitePanel').classList.toggle('hidden', !isOwner);
+  $('inviteUnavailable').classList.toggle('hidden', isOwner);
 }
 function listenToFamily() {
   stopFamilyListeners();
@@ -158,7 +174,7 @@ function listenToFamily() {
     renderItems(); message('appStatus', 'Synced · this family’s list is private.');
   }, e => message('appStatus', friendly(e), true));
   stopMembers = onSnapshot(collection(db, ...familyPath('members')), snap => { members = snap.docs.map(d=>({uid:d.id,...d.data()})); renderMembers(); });
-  show('appPanel'); hide('familyPanel'); hide('loginPanel');
+  show('appPanel'); hide('familyPanel'); hide('loginPanel'); showPage('list');
 }
 async function chooseFamily() {
   requireVerifiedUser();

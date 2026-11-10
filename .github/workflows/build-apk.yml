@@ -128,7 +128,7 @@ jobs:
               }
           """
           if "signingConfigs {" not in source:
-              source = source.replace("android {", "android {\\n" + signing, 1)
+              source = source.replace("android {", "android {\n" + signing, 1)
           if "signingConfig signingConfigs.release" not in source:
               source = source.replace("buildTypes {", "buildTypes {\\n        debug {\\n            signingConfig signingConfigs.release\\n        }", 1)
           path.write_text(source)
